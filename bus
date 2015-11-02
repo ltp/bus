@@ -1,0 +1,53 @@
+#!/usr/bin/perl
+
+BEGIN { unshift @INC, '.' }
+
+use WWW::PTV;
+use WWW::Myki;
+use Term::ANSIColor;
+use Data::Dumper;
+
+binmode( STDOUT, ":utf8" );
+
+my $routes = {
+	8765 => { 
+			name		=> 'Route 1',
+			direction	=> 'out',
+			stop		=> 31237
+		},
+	8633 => {
+			name		=> 'Route 41',
+			direction	=> 'in',
+			stop		=> 45327
+		}
+};
+
+my $ptv = WWW::PTV->new( cache => 1 );
+
+print colored( sprintf( "%-80s", "    \x{1F68C}    NEXT BUS" ), 'black', 'on_white', 'bold' ), "\n\n";
+
+for my $route_id ( keys %{ $routes } ) {
+	my $route = $ptv->get_route_by_id( $route_id );
+	my $next;
+
+	if ( $routes->{ $route_id }->{ direction } eq 'out' ) {
+		$next = $ptv->get_route_by_id( $route_id )
+				->get_outbound_tt
+				->get_schedule_by_stop_id( $routes->{ $route_id }->{ stop } )
+				->next
+	}
+	else {
+		$next = $ptv->get_route_by_id( $route_id )
+				->get_inbound_tt
+				->get_schedule_by_stop_id( $routes->{ $route_id }->{ stop } )
+				->next
+	}
+
+	my $stop = $ptv->get_stop_by_id( $routes->{ $route_id }->{ stop } );
+
+	print colored( sprintf( "%-80s", $route->name ), 'white', 'on_black', 'bold' ), "\n";
+	print colored( sprintf( " - Dep. %-60s", $stop->address ), 'white', 'on_black' );
+	print colored( sprintf( "%-12s", "$$next[0]:$$next[1]" ), 'red', 'on_black', 'bold' ), "\n";
+	print "\n";
+}
+
